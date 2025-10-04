@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VC Pitch Deck Analyzer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            padding: 40px;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2em;
+        }
+        
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #333;
+            font-weight: 500;
+        }
+        
+        input[type="text"], input[type="email"], select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        input[type="text"]:focus, input[type="email"]:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        input[type="file"] {
+            width: 100%;
+            padding: 10px;
+            border: 2px dashed #e0e0e0;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: transform 0.2s;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            margin-top: 20px;
+            color: #667eea;
+        }
+        
+        .result {
+            display: none;
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .score-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .score-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .score-value {
+            font-size: 2em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .score-label {
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+        
+        .investible-yes {
+            color: #28a745;
+            font-weight: bold;
+        }
+        
+        .investible-no {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        
+        .notes-section {
+            margin-top: 20px;
+        }
+        
+        .note-item {
+            margin-bottom: 15px;
+            padding: 10px;
+            background: white;
+            border-radius: 6px;
+        }
+        
+        .note-title {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        
+        .note-text {
+            color: #666;
+        }
+        
+        .error {
+            display: none;
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8d7da;
+            color: #721c24;
+            border-radius: 6px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>VC Pitch Deck Analyzer</h1>
+        <p class="subtitle">AI-powered startup evaluation using CrewAI and Groq</p>
+        
+        <form id="uploadForm">
+            <div class="form-group">
+                <label for="file">Pitch Deck (PDF/PPTX)</label>
+                <input type="file" id="file" name="file" accept=".pdf,.pptx" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="company_name">Company Name</label>
+                <input type="text" id="company_name" name="company_name" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="sector">Sector</label>
+                <input type="text" id="sector" name="sector" placeholder="e.g., Fintech, HealthTech, SaaS" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="stage">Stage</label>
+                <select id="stage" name="stage" required>
+                    <option value="">Select Stage</option>
+                    <option value="Pre-Seed">Pre-Seed</option>
+                    <option value="Seed">Seed</option>
+                    <option value="Series A">Series A</option>
+                    <option value="Series B">Series B</option>
+                    <option value="Series C+">Series C+</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="funding_ask">Funding Ask (₹)</label>
+                <input type="text" id="funding_ask" name="funding_ask" placeholder="e.g., ₹5 Crore" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="fund_thesis">Fund Thesis (Optional)</label>
+                <input type="text" id="fund_thesis" name="fund_thesis" placeholder="e.g., Early-stage B2B SaaS">
+            </div>
+            
+            <div class="form-group">
+                <label for="contact_email">Contact Email (Optional - for report delivery)</label>
+                <input type="email" id="contact_email" name="contact_email" placeholder="your@email.com">
+            </div>
+            
+            <button type="submit" class="btn" id="submitBtn">Analyze Pitch Deck</button>
+        </form>
+        
+        <div class="loading" id="loading">
+            <p>Analyzing pitch deck... This may take a minute.</p>
+            <p>🤖 AI agents are evaluating your startup...</p>
+        </div>
+        
+        <div class="error" id="error"></div>
+        
+        <div class="result" id="result">
+            <h2>Evaluation Results</h2>
+            
+            <div class="score-grid">
+                <div class="score-card">
+                    <div class="score-value" id="score-market">-</div>
+                    <div class="score-label">Market Size</div>
+                </div>
+                <div class="score-card">
+                    <div class="score-value" id="score-team">-</div>
+                    <div class="score-label">Team</div>
+                </div>
+                <div class="score-card">
+                    <div class="score-value" id="score-product">-</div>
+                    <div class="score-label">Product</div>
+                </div>
+                <div class="score-card">
+                    <div class="score-value" id="score-traction">-</div>
+                    <div class="score-label">Traction</div>
+                </div>
+                <div class="score-card">
+                    <div class="score-value" id="score-financials">-</div>
+                    <div class="score-label">Financials</div>
+                </div>
+                <div class="score-card">
+                    <div class="score-value" id="score-overall">-</div>
+                    <div class="score-label">Overall</div>
+                </div>
+            </div>
+            
+            <div style="text-align: center; margin: 20px 0;">
+                <h3>Investment Decision: <span id="investible">-</span></h3>
+            </div>
+            
+            <div id="summary" style="background: white; padding: 15px; border-radius: 6px; margin: 20px 0;"></div>
+            
+            <div id="strengths-section" style="margin: 20px 0;">
+                <h4>Key Strengths</h4>
+                <ul id="strengths-list" style="margin-top: 10px; padding-left: 20px;"></ul>
+            </div>
+            
+            <div id="concerns-section" style="margin: 20px 0;">
+                <h4>Key Concerns</h4>
+                <ul id="concerns-list" style="margin-top: 10px; padding-left: 20px;"></ul>
+            </div>
+            
+            <div class="notes-section">
+                <h4>Detailed Evaluation Notes</h4>
+                <div id="notes"></div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const submitBtn = document.getElementById('submitBtn');
+            const loading = document.getElementById('loading');
+            const result = document.getElementById('result');
+            const error = document.getElementById('error');
+            
+            submitBtn.disabled = true;
+            loading.style.display = 'block';
+            result.style.display = 'none';
+            error.style.display = 'none';
+            
+            try {
+                const response = await fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.detail || 'Upload failed');
+                }
+                
+                const data = await response.json();
+                displayResults(data.result);
+                
+                loading.style.display = 'none';
+                result.style.display = 'block';
+            } catch (err) {
+                loading.style.display = 'none';
+                error.style.display = 'block';
+                error.textContent = err.message;
+            } finally {
+                submitBtn.disabled = false;
+            }
+        });
+        
+        function displayResults(data) {
+            document.getElementById('score-market').textContent = data.scores.market_size;
+            document.getElementById('score-team').textContent = data.scores.team;
+            document.getElementById('score-product').textContent = data.scores.product;
+            document.getElementById('score-traction').textContent = data.scores.traction;
+            document.getElementById('score-financials').textContent = data.scores.financials;
+            document.getElementById('score-overall').textContent = data.scores.overall;
+            
+            const investible = document.getElementById('investible');
+            investible.textContent = data.investible;
+            investible.className = data.investible === 'Yes' ? 'investible-yes' : 'investible-no';
+            
+            document.getElementById('summary').textContent = data.summary;
+            
+            const strengthsList = document.getElementById('strengths-list');
+            strengthsList.innerHTML = '';
+            (data.key_strengths || []).forEach(strength => {
+                const li = document.createElement('li');
+                li.textContent = strength;
+                strengthsList.appendChild(li);
+            });
+            
+            const concernsList = document.getElementById('concerns-list');
+            concernsList.innerHTML = '';
+            (data.key_concerns || []).forEach(concern => {
+                const li = document.createElement('li');
+                li.textContent = concern;
+                concernsList.appendChild(li);
+            });
+            
+            const notes = document.getElementById('notes');
+            notes.innerHTML = '';
+            Object.entries(data.evaluation_notes).forEach(([key, value]) => {
+                const noteDiv = document.createElement('div');
+                noteDiv.className = 'note-item';
+                noteDiv.innerHTML = `
+                    <div class="note-title">${key.replace('_', ' ').toUpperCase()}</div>
+                    <div class="note-text">${value}</div>
+                `;
+                notes.appendChild(noteDiv);
+            });
+        }
+    </script>
+</body>
+</html>
