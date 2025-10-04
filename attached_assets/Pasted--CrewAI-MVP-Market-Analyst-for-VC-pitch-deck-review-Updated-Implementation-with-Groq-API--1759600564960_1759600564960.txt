@@ -1,0 +1,164 @@
+# CrewAI MVP — Market Analyst (for VC pitch-deck review)
+
+## Updated Implementation with Groq API Integration
+
+### Goal
+
+Automate startup pitch deck evaluation using **CrewAI** for orchestration and **Groq API** for AI-powered scoring and recommendations.
+
+---
+
+## 🔹 Architecture Overview
+
+### Workflow Steps
+
+1. **User Uploads Deck & Info**
+
+   * Inputs: Fund Thesis, Company Name, Sector, Stage, Pitch Deck (PDF/PPT/PPTX), Contact Email, Funding Ask (₹)
+   * FastAPI backend stores the deck locally or in MinIO.
+
+2. **Deck Parsing**
+
+   * `python-pptx` → extract text from PPT/PPTX
+   * `pymupdf` → extract text from PDF
+   * Optional OCR (`pytesseract`) for image-based slides
+   * Output structured JSON for CrewAI agents.
+
+   ```json
+   {
+     "company_name": "Startup A",
+     "sector": "Fintech",
+     "stage": "Seed",
+     "content": "Slide 1: Team ... Slide 2: Market Size ... etc."
+   }
+   ```
+
+3. **CrewAI Flow** — Multi-Agent Coordination
+   CrewAI orchestrates the following specialized agents:
+
+   | Agent                  | Task                                 | Uses Groq API? |
+   | ---------------------- | ------------------------------------ | -------------- |
+   | ParserAgent            | Extract text and images              | ❌              |
+   | MarketResearchAgent    | Analyze market size & trends         | ✅              |
+   | TeamEvaluatorAgent     | Evaluate founder and team quality    | ✅              |
+   | ProductAgent           | Assess product differentiation       | ✅              |
+   | FinancialAgent         | Review financials and runway         | ✅              |
+   | ScoringAggregatorAgent | Aggregate and normalize scores       | ✅              |
+   | ReportWriterAgent      | Generate final human-readable report | ✅              |
+
+---
+
+## ⚙️ Groq API Integration
+
+**Models:** `mixtral-8x7b` or `llama3-70b-8192`
+
+**Function Example:**
+
+```python
+import requests
+
+def generate_score(category, text):
+    url = "https://api.groq.com/openai/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "model": "mixtral-8x7b",
+        "messages": [
+            {"role": "system", "content": "You are a VC analyst evaluating startup pitch decks."},
+            {"role": "user", "content": f"Rate the {category} of the following pitch deck from 1-10 and explain briefly:\n{text}"}
+        ]
+    }
+
+    response = requests.post(url, headers=headers, json=payload)
+    data = response.json()
+    return data["choices"][0]["message"]["content"]
+```
+
+All CrewAI agents can call this helper to compute structured ratings.
+
+---
+
+## 🧮 Scoring Metrics
+
+* Market Size (x/10)
+* Team (x/10)
+* Product (x/10)
+* Traction (x/10)
+* Financials (x/10)
+* Overall Score (weighted average)
+* Investible: Yes/No
+* Evaluation Notes: Key insights
+
+---
+
+## 📦 Output JSON Example
+
+```json
+{
+  "company_name": "FinSight",
+  "sector": "AI Analytics",
+  "scores": {
+    "market_size": 8.7,
+    "team": 9.0,
+    "product": 7.5,
+    "traction": 6.5,
+    "financials": 8.0,
+    "overall": 7.94
+  },
+  "investible": "Yes",
+  "evaluation_notes": "Strong team and large market; product needs differentiation."
+}
+```
+
+---
+
+## 🧱 Phase 1 Implementation Steps (Revised)
+
+### Step 1: Environment Setup
+
+* Install: `crewai`, `fastapi`, `pydantic`, `python-pptx`, `pymupdf`, `tesseract`, `requests`, `uvicorn`, `minio`, `sendgrid`
+* Configure `.env` for Groq API key and storage paths
+
+### Step 2: CrewAI Configuration
+
+* Define agents and input/output schemas (Pydantic)
+* Orchestrate execution order in CrewAI Flow
+
+### Step 3: FastAPI Backend
+
+* `/upload` route: handles file upload and triggers CrewAI Flow
+* `/result/{id}` route: retrieves evaluation JSON
+
+### Step 4: Scoring Engine
+
+* Integrate `generate_score()` from Groq for each metric
+* Combine results into structured output
+
+### Step 5: Output & Notification
+
+* Generate JSON + Markdown report
+* Email summary to fund manager
+
+---
+
+## 🚀 Next Steps
+
+1. Set up Groq API key and test scoring logic.
+2. Implement CrewAI flow using the defined agents.
+3. Build FastAPI backend endpoints.
+4. Connect upload → parse → evaluate → report pipeline.
+5. Add optional dashboard for manual score adjustment.
+
+---
+
+✅ **Final Deliverables**
+
+* CrewAI agent code with Groq scoring integration
+* FastAPI backend with upload/result routes
+* Parser for PPT/PDF decks
+* Scoring engine using Groq API
+* JSON/Markdown report generator
+* Email notification system
+* (Optional) Analyst dashboard for feedback tuning
